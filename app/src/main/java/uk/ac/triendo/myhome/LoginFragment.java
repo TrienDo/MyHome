@@ -24,6 +24,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Arrays;
 import java.util.Collections;
 
 
@@ -74,14 +75,14 @@ public class LoginFragment extends Fragment {
     // ***************************************
     // Private methods
     // ***************************************
-    private void displayResponse(Address response) {
+    private void displayResponse(ReturnMessage response) {
         Toast.makeText(getActivity(), response.toString(), Toast.LENGTH_LONG).show();
     }
 
     // ***************************************
     // Private classes
     // ***************************************
-    private class FetchSecuredResourceTask extends AsyncTask<Void, Void, Address> {
+    private class FetchSecuredResourceTask extends AsyncTask<Void, Void, ReturnMessage> {
 
         private String username;
 
@@ -100,10 +101,21 @@ public class LoginFragment extends Fragment {
         }
 
         @Override
-        protected Address doInBackground(Void... params) {
+        protected ReturnMessage doInBackground(Void... params) {
             //final String url = getString(R.string.restful_base_uri) + MyHomeLib.URL_LOGIN;
-            final String url = getString(R.string.restful_base_uri) + "/addressOne/";
+            /*final String url = getString(R.string.restful_base_uri) + "/addressOne";
+            RestTemplate restTemplate = new RestTemplate();
+            restTemplate.getMessageConverters().add(new MappingJacksonHttpMessageConverter());
+            Address result = restTemplate.getForObject(url, Address.class);
+            System.out.println(result.toString());*/
+
+            //HttpHeaders headers = new HttpHeaders();
+            //headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
+            //HttpEntity<String> entity = new HttpEntity<String>("parameters", headers);
+            //ResponseEntity<Address> result = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
             // Populate the HTTP Basic Authentitcation header with the username and password
+            final String url = getString(R.string.restful_base_uri) + "/user";
             HttpAuthentication authHeader = new HttpBasicAuthentication(username, password);
             HttpHeaders requestHeaders = new HttpHeaders();
             requestHeaders.setAuthorization(authHeader);
@@ -116,19 +128,16 @@ public class LoginFragment extends Fragment {
             try {
                 // Make the network request
                 Log.d(TAG, url);
-                ResponseEntity<Address> response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<Object>(requestHeaders), Address.class);
+                ResponseEntity<ReturnMessage> response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<Object>(requestHeaders), ReturnMessage.class);
                 return response.getBody();
-            } catch (HttpClientErrorException e) {
+            } catch (Exception e) {
                 Log.e(TAG, e.getLocalizedMessage(), e);
-                return new Address("This", "is", "a", "wrong", "address" + e.getMessage());
-            } catch (ResourceAccessException e) {
-                Log.e(TAG, e.getLocalizedMessage(), e);
-                return new Address("This", "is", "a", "wrong", "address" + e.getMessage());
+                return new ReturnMessage(0, e.getClass().getSimpleName(), e.getLocalizedMessage());
             }
         }
 
         @Override
-        protected void onPostExecute(Address result) {
+        protected void onPostExecute(ReturnMessage result) {
             dismissProgressDialog();
             displayResponse(result);
         }
