@@ -1,6 +1,7 @@
 package uk.ac.triendo.myhome;
 
 import android.app.ProgressDialog;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
@@ -9,6 +10,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -20,11 +22,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.json.MappingJacksonHttpMessageConverter;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Arrays;
 import java.util.Collections;
 
 
@@ -36,6 +35,9 @@ public class LoginFragment extends Fragment {
     protected static final String TAG = MainActivity.class.getSimpleName();
     private ProgressDialog progressDialog;
     private boolean destroyed = false;
+    EditText editUsername;
+    EditText editPassword;
+    CheckBox cbRemember;
 
     public LoginFragment() {
         // Required empty public constructor
@@ -47,9 +49,31 @@ public class LoginFragment extends Fragment {
         // Inflate the layout for this fragment
         View objView = inflater.inflate(R.layout.fragment_login, container, false);
         Button btnLogin = (Button)objView.findViewById(R.id.btnLogin);
+        //Get references
+        final SharedPreferences settings = getActivity().getSharedPreferences(MyHomeLib.APP_PREFERENCES, 0);
+        boolean isRemember = settings.getBoolean("isRemember", false);
+        cbRemember = (CheckBox)objView.findViewById(R.id.cbRemember);
+        cbRemember.setChecked(isRemember);
+        editUsername = (EditText)objView.findViewById(R.id.etUsername);
+        editPassword = (EditText)objView.findViewById(R.id.etPassword);
+        if(isRemember){
+            editUsername.setText(settings.getString("username",""));
+            editPassword.setText(settings.getString("password", ""));
+        }
+
         btnLogin.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
+                //Save references
+                SharedPreferences.Editor editor = settings.edit();
+                editor.putBoolean("isRemember", cbRemember.isChecked());
+                if(cbRemember.isChecked())
+                {
+                    editor.putString("username",editUsername.getText().toString());
+                    editor.putString("password",editPassword.getText().toString());
+                }
+                editor.commit();
+
                 new FetchSecuredResourceTask().execute();
             }
         });
@@ -67,37 +91,28 @@ public class LoginFragment extends Fragment {
         destroyed = true;
     }
 
-    public void login(View v)
-    {
-        new FetchSecuredResourceTask().execute();
-    }
-
     // ***************************************
     // Private methods
     // ***************************************
     private void displayResponse(ReturnMessage response) {
-        Toast.makeText(getActivity(), response.toString(), Toast.LENGTH_LONG).show();
+
+        if(response.getId() != -1)
+            Toast.makeText(getActivity(), "You have sucessfully logged in", Toast.LENGTH_LONG).show();
+        else
+            Toast.makeText(getActivity(), "Something wrong. Pleas log in again", Toast.LENGTH_LONG).show();
     }
 
     // ***************************************
     // Private classes
     // ***************************************
     private class FetchSecuredResourceTask extends AsyncTask<Void, Void, ReturnMessage> {
-
         private String username;
-
         private String password;
-
         @Override
         protected void onPreExecute() {
             showLoadingProgressDialog();
-
-            // build the message object
-            EditText editUsername = (EditText)getView().findViewById(R.id.etUsername);
             this.username = editUsername.getText().toString();
-
-            EditText editPasword = (EditText)getView().findViewById(R.id.etPassword);
-            this.password = editPasword.getText().toString();
+            this.password = editPassword.getText().toString();
         }
 
         @Override
@@ -129,7 +144,19 @@ public class LoginFragment extends Fragment {
                 // Make the network request
                 Log.d(TAG, url);
                 ResponseEntity<ReturnMessage> response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<Object>(requestHeaders), ReturnMessage.class);
-                return response.getBody();
+                ReturnMessage msg = response.getBody();
+                MyHomeSettings appSettings = (MyHomeSettings) getActivity().getApplicationContext();
+                if(msg.getId() != -1)
+                {
+                    appSettings.setRequestHeaders(requestHeaders);
+                    appSettings.setUserID("" + msg.getId());
+                    appSettings.setUsername(msg.getSubject());
+                    appSettings.setUserEmail(msg.getText());
+                }
+                else
+                    appSettings.setRequestHeaders(null);
+
+                return msg;
             } catch (Exception e) {
                 Log.e(TAG, e.getLocalizedMessage(), e);
                 return new ReturnMessage(0, e.getClass().getSimpleName(), e.getLocalizedMessage());

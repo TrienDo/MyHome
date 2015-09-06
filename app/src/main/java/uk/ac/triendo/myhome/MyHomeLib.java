@@ -6,4 +6,5 @@ package uk.ac.triendo.myhome;
 public class MyHomeLib {
     public static String URL_LOGIN = "/user";
     public static String URL_REGISTER = "/users";
+    public static String APP_PREFERENCES = "MyHomePreferences";
 }

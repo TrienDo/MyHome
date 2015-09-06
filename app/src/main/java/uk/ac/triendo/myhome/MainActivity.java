@@ -58,7 +58,7 @@ public class MainActivity extends AppCompatActivity
                 objFragment = new LoginFragment();
                 break;
             case 1:
-                //objFragment = new LoginFragment();
+                objFragment = new AddressFragment();
                 break;
             case 2:
                 //objFragment = new LoginFragment();
